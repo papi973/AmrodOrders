@@ -1,6 +1,28 @@
-@Orders.API_HostAddress = http://localhost:5170
+@baseUrl = https://localhost:7284
 
-GET {{Orders.API_HostAddress}}/weatherforecast/
-Accept: application/json
+### Create customer (201)
+POST {{baseUrl}}/api/customers
+Content-Type: application/json
 
-###
+{ "name": "Acme Trading", "email": "buyer@acme.co.za", "countryCode": "ZA" }
+
+### Duplicate email (409)
+POST {{baseUrl}}/api/customers
+Content-Type: application/json
+
+{ "name": "Acme Again", "email": "BUYER@acme.co.za", "countryCode": "ZA" }
+
+### Non-SADC country (400)
+POST {{baseUrl}}/api/customers
+Content-Type: application/json
+
+{ "name": "Nairobi Ltd", "email": "x@nairobi.co.ke", "countryCode": "KE" }
+
+### Search (200)
+GET {{baseUrl}}/api/customers?search=acme&page=1&pageSize=10
+
+### pageSize > 100 (400)
+GET {{baseUrl}}/api/customers?pageSize=101
+
+### Get by id: paste an id from the create response (200 / 404)
+GET {{baseUrl}}/api/customers/00000000-0000-0000-0000-000000000000
