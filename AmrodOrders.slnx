@@ -1,1 +1,13 @@
-<Solution />
+<Solution>
+  <Folder Name="/Src/">
+    <Project Path="Orders.API/Orders.API.csproj" />
+    <Project Path="Orders.Contracts/Orders.Contracts.csproj" />
+    <Project Path="Orders.Domain/Orders.Domain.csproj" />
+    <Project Path="Orders.Infrastructure/Orders.Infrastructure.csproj" />
+    <Project Path="Orders.Worker/Orders.Worker.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="Orders.API.IntergrationTests/Orders.API.IntergrationTests.csproj" />
+    <Project Path="Orders.Domain.Tests/Orders.Domain.Tests.csproj" />
+  </Folder>
+</Solution>
