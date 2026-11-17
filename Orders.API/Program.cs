@@ -1,8 +1,9 @@
-using System.Text.Json.Serialization;
 using FluentValidation;
 using Orders.API.Errors;
+using Orders.API.Options;
 using Orders.API.Validation;
 using Orders.Infrastructure;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,6 +28,7 @@ builder.Services.ConfigureHttpJsonOptions(o =>
     o.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
     o.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
 });
+builder.Services.Configure<OrderingOptions>(builder.Configuration.GetSection("Ordering"));
 
 var app = builder.Build();
 
