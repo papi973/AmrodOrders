@@ -1,18 +1,22 @@
-﻿using System.Security.Cryptography;
-using System.Text;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Orders.API.Auth;
 using Orders.API.Contracts;
 using Orders.API.Options;
 using Orders.Domain;
 using Orders.Infrastructure.Persistence;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Orders.API.Controllers;
 
 [ApiController]
 [Route("api/orders")]
 [Produces("application/json")]
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
 public sealed class OrdersController(OrdersDbContext db, IOptions<OrderingOptions> ordering) : ControllerBase
 {
     private const string IdempotencyHeader = "Idempotency-Key";
@@ -22,6 +26,7 @@ public sealed class OrdersController(OrdersDbContext db, IOptions<OrderingOption
     [ProducesResponseType<OrderResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status422UnprocessableEntity)]
+    [Authorize(Policy = AuthPolicies.Write)]
     public async Task<IActionResult> Create(CreateOrderRequest request, CancellationToken ct)
     {
         var customer = await db.Customers.AsNoTracking()
@@ -52,6 +57,7 @@ public sealed class OrdersController(OrdersDbContext db, IOptions<OrderingOption
     [ProducesResponseType<OrderResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status304NotModified)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [Authorize(Policy = AuthPolicies.Read)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var order = await LoadOrderAsync(id, ct);
@@ -71,6 +77,7 @@ public sealed class OrdersController(OrdersDbContext db, IOptions<OrderingOption
     [HttpGet]
     [ProducesResponseType<PagedResult<OrderSummaryResponse>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [Authorize(Policy = AuthPolicies.Read)]
     public async Task<ActionResult<PagedResult<OrderSummaryResponse>>> Search(
         [FromQuery] OrderSearchQuery query, CancellationToken ct)
     {
@@ -106,6 +113,7 @@ public sealed class OrdersController(OrdersDbContext db, IOptions<OrderingOption
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status412PreconditionFailed)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status422UnprocessableEntity)]
+    [Authorize(Policy = AuthPolicies.Write)]
     public async Task<IActionResult> UpdateStatus(
         Guid id,
         UpdateOrderStatusRequest request,

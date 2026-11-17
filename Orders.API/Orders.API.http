@@ -1,4 +1,6 @@
 @baseUrl = https://localhost:7284
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6ImRldi13cml0ZXIiLCJzdWIiOiJkZXYtd3JpdGVyIiwianRpIjoiYWEwYzA2MzMiLCJyb2xlIjpbIk9yZGVycy5SZWFkIiwiT3JkZXJzLldyaXRlIl0sImF1ZCI6WyJodHRwOi8vbG9jYWxob3N0OjUxNzAiLCJodHRwczovL2xvY2FsaG9zdDo3Mjg0Il0sIm5iZiI6MTc5NDk1ODAxNywiZXhwIjoxODAyOTA2ODE3LCJpYXQiOjE3OTQ5NTgwMTgsImlzcyI6ImRvdG5ldC11c2VyLWp3dHMifQ.3pPF50PoO5pj0DTFtd_cw8Ixi366cbtzsQoDuVMhjFw
+@readerToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVfbmFtZSI6ImRldi1yZWFkZXIiLCJzdWIiOiJkZXYtcmVhZGVyIiwianRpIjoiYTZlMTc5OTgiLCJyb2xlIjoiT3JkZXJzLlJlYWQiLCJhdWQiOlsiaHR0cDovL2xvY2FsaG9zdDo1MTcwIiwiaHR0cHM6Ly9sb2NhbGhvc3Q6NzI4NCJdLCJuYmYiOjE3OTQ5NTgxNTEsImV4cCI6MTgwMjkwNjk1MSwiaWF0IjoxNzk0OTU4MTUyLCJpc3MiOiJkb3RuZXQtdXNlci1qd3RzIn0.bDjfCLbfHlTxMeCzJcCCdYemNTFBYuQo4bCmW3GsjnE
 @customerId = BCE6AE9A-2F4E-455A-8201-961D482F373A
 @orderId = F9BEE150-D029-4503-9AC7-B4B1695CB55B
 
@@ -109,3 +111,31 @@ Idempotency-Key: 6f1c9a52-0001-4b1e-9d1a-000000000003
 If-Match: "AAAAAAAAAAA="
 
 { "status": "Delivered" }
+
+### No token (401)
+GET {{baseUrl}}/api/orders
+
+### Reader cannot create (403)
+POST {{baseUrl}}/api/customers
+Authorization: Bearer {{readerToken}}
+Content-Type: application/json
+
+{ "name": "Nope", "email": "nope@x.co.za", "countryCode": "ZA" }
+
+### Reader can read (200)
+GET {{baseUrl}}/api/orders
+Authorization: Bearer {{readerToken}}
+
+### Correlation id echoed (check X-Correlation-ID response header + console log)
+GET {{baseUrl}}/api/orders
+Authorization: Bearer {{token}}
+X-Correlation-ID: test-corr-123
+
+### Liveness (200, no auth)
+GET {{baseUrl}}/healthz
+
+### Readiness (200 Healthy; stop SQL Server to see 503)
+GET {{baseUrl}}/readiness
+
+### Metrics (Prometheus text)
+GET {{baseUrl}}/metrics
