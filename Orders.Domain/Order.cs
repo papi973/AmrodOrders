@@ -16,6 +16,7 @@ namespace Orders.Domain
         public DateTime CreatedAt { get; private set; }
         public string CurrencyCode { get; private set; } = null!;
         public decimal TotalAmount { get; private set; }
+        public byte[] RowVersion { get; private set; } = [];
         public IReadOnlyCollection<OrderLineItem> LineItems => _lineItems.AsReadOnly();
 
         public static Order Create(
