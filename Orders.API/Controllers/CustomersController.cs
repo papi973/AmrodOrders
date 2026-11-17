@@ -1,5 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Orders.API.Auth;
 using Orders.API.Contracts;
 using Orders.Domain;
 using Orders.Infrastructure.Persistence;
@@ -9,12 +11,15 @@ namespace Orders.API.Controllers;
 [ApiController]
 [Route("api/customers")]
 [Produces("application/json")]
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
 public sealed class CustomersController(OrdersDbContext db) : ControllerBase
 {
     [HttpPost]
     [ProducesResponseType<CustomerResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    [Authorize(Policy = AuthPolicies.Write)]
     public async Task<IActionResult> Create(CreateCustomerRequest request, CancellationToken ct)
     {
         var email = request.Email.Trim().ToLowerInvariant();
@@ -35,6 +40,7 @@ public sealed class CustomersController(OrdersDbContext db) : ControllerBase
     [HttpGet("{id:guid}")]
     [ProducesResponseType<CustomerResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [Authorize(Policy = AuthPolicies.Read)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
         var customer = await db.Customers
@@ -49,6 +55,7 @@ public sealed class CustomersController(OrdersDbContext db) : ControllerBase
     [HttpGet]
     [ProducesResponseType<PagedResult<CustomerResponse>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [Authorize(Policy = AuthPolicies.Read)]
     public async Task<ActionResult<PagedResult<CustomerResponse>>> Search(
         [FromQuery] CustomerSearchQuery query, CancellationToken ct)
     {
