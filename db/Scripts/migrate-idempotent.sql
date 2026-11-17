@@ -135,3 +135,39 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261117192910_AddIdempotencyRecords'
+)
+BEGIN
+    CREATE TABLE [IdempotencyRecords] (
+        [Key] varchar(150) NOT NULL,
+        [RequestHash] char(64) NOT NULL,
+        [ResourceId] uniqueidentifier NOT NULL,
+        [StatusCode] int NOT NULL,
+        [CreatedAt] datetime2 NOT NULL,
+        CONSTRAINT [PK_IdempotencyRecords] PRIMARY KEY ([Key])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261117192910_AddIdempotencyRecords'
+)
+BEGIN
+    CREATE INDEX [IX_IdempotencyRecords_CreatedAt] ON [IdempotencyRecords] ([CreatedAt]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261117192910_AddIdempotencyRecords'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261117192910_AddIdempotencyRecords', N'10.0.0');
+END;
+
+COMMIT;
+GO
+
