@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "oxlint src",
+    "lint": "node scripts/lint.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "gen:api": "npx --yes openapi-typescript@7 openapi.json -o src/api/schema.d.ts",
