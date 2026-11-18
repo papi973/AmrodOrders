@@ -1,16 +1,18 @@
-using System.Text.Json.Serialization;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using Orders.API.Auth;
 using Orders.API.Errors;
+using Orders.API.Messsaging;
 using Orders.API.Observability;
 using Orders.API.OpenApi;
 using Orders.API.Options;
 using Orders.API.Validation;
 using Orders.Infrastructure;
 using Orders.Infrastructure.Persistence;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -64,9 +66,11 @@ builder.Services.AddCors(o => o.AddPolicy("web", p => p
 // OpenAPI 
 builder.Services.AddOpenApi(o => o.AddDocumentTransformer<BearerSecuritySchemeTransformer>());
 
-// Health checks 
-builder.Services.AddHealthChecks().AddDbContextCheck<OrdersDbContext>("sql", tags: ["ready"]);
-//RabbitMQ check with tag "ready"
+// Health checks + RabbitMQ check with tag "ready"
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<OrdersDbContext>("sql", tags: ["ready"])
+    .AddCheck<RabbitMqHealthCheck>("rabbitmq", failureStatus: HealthStatus.Degraded, tags: ["ready"]);
+
 
 // Metrics: request duration histogram + counts via OpenTelemetry 
 builder.Services.AddOpenTelemetry()
@@ -74,6 +78,12 @@ builder.Services.AddOpenTelemetry()
     .WithMetrics(m => m
         .AddAspNetCoreInstrumentation()   // http.server.request.duration (count, sum, buckets)
         .AddPrometheusExporter());
+
+// Messaging: RabbitMQ publisher + background outbox dispatcher
+var rabbitMq = builder.Configuration.GetConnectionString("RabbitMq")
+    ?? throw new InvalidOperationException("Connection string 'RabbitMq' is missing.");
+builder.Services.AddMessaging(rabbitMq);
+builder.Services.AddHostedService<OutboxDispatcher>();
 
 var app = builder.Build();
 
