@@ -362,3 +362,8 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /web
+
+# Docker Compose local env
+.env
+# Docker Compose local env
+.env

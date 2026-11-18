@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+.git/
+web/node_modules/
+web/dist/
+web/coverage/
+web/.env*.local
+**/TestResults/
