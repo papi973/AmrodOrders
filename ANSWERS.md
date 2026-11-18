@@ -245,33 +245,42 @@ ALTER PARTITION FUNCTION pf_OrdersByMonth() MERGE RANGE ('2026-01-01');
 20. sp_GetTransactionReport
 
 ```sql
-CREATE OR ALTER PROCEDURE sp_GetTransactionReport
-    @From datetime2,
-    @To datetime2,
-    @Status varchar(20) = NULL
+CREATE OR ALTER PROCEDURE dbo.sp_GetTransactionReport
+    @StartDate  DATE,                       -- inclusive
+    @EndDate    DATE,                       -- inclusive
+    @Status     NVARCHAR(20)     = NULL,
+    @CustomerId UNIQUEIDENTIFIER = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- details
-    SELECT o.Id, o.CreatedAt, o.Status, o.CurrencyCode, o.TotalAmount,
-           c.Name AS Customer, li.ProductSku, li.Quantity, li.UnitPrice
+    -- Inclusive end DATE -> exclusive upper bound, so orders late on @EndDate are included
+    DECLARE @From datetime2 = @StartDate,
+            @To   datetime2 = DATEADD(DAY, 1, @EndDate);
+
+    -- Result set 1: detailed rows
+    SELECT c.Name, c.Email, c.CountryCode,
+           o.Id, o.Status, o.CreatedAt, o.CurrencyCode, o.TotalAmount,
+           li.ProductSku, li.Quantity, li.UnitPrice
     FROM Orders o
-    JOIN Customers c ON c.Id = o.CustomerId
+    JOIN Customers c       ON c.Id = o.CustomerId
     JOIN OrderLineItems li ON li.OrderId = o.Id
     WHERE o.CreatedAt >= @From AND o.CreatedAt < @To
-      AND (@Status IS NULL OR o.Status = @Status);
+      AND (@Status IS NULL OR o.Status = @Status)
+      AND (@CustomerId IS NULL OR o.CustomerId = @CustomerId)
+    ORDER BY o.CreatedAt, o.Id;
 
-    -- summary (per currency)
-    SELECT CurrencyCode, COUNT(*) AS TotalOrders, SUM(TotalAmount) AS GrandTotalAmount
-    FROM Orders
-    WHERE CreatedAt >= @From AND CreatedAt < @To
-      AND (@Status IS NULL OR Status = @Status)
-    GROUP BY CurrencyCode;
+    -- Result set 2: summary
+    SELECT COUNT(*) AS TotalOrders, COALESCE(SUM(o.TotalAmount), 0) AS GrandTotalAmount
+    FROM Orders o
+    WHERE o.CreatedAt >= @From AND o.CreatedAt < @To
+      AND (@Status IS NULL OR o.Status = @Status)
+      AND (@CustomerId IS NULL OR o.CustomerId = @CustomerId);
 END;
 GO
 
-EXEC sp_GetTransactionReport '2026-11-01', '2026-12-01'
+EXEC dbo.sp_GetTransactionReport @StartDate = '2026-06-01', @EndDate = '2026-11-30';
+EXEC dbo.sp_GetTransactionReport @StartDate = '2026-06-01', @EndDate = '2026-11-30', @Status = N'Fulfilled';
 ```
 
 - It returns two result sets: details, then a summary.
