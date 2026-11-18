@@ -1,0 +1,5 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0
+WORKDIR /src
+COPY . .
+RUN dotnet tool restore && dotnet build Orders.API/Orders.API.csproj -c Release
+ENTRYPOINT ["sh", "-c", "dotnet ef database update --project Orders.API --startup-project Orders.API --configuration Release --no-build --connection \"$ConnectionStrings__OrdersDb\""]

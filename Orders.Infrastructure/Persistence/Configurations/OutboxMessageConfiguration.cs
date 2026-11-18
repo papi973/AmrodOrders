@@ -11,7 +11,7 @@ namespace Orders.Infrastructure.Persistence.Configurations
         public void Configure(EntityTypeBuilder<OutboxMessage> b)
         {
             b.ToTable("OutboxMessages");
-            b.HasKey(m=> m.Id);
+            b.HasKey(m => m.Id);
             b.Property(m => m.Id).ValueGeneratedNever();
             b.Property(x => x.Type).IsRequired().HasMaxLength(200);
             b.Property(m => m.RoutingKey).HasMaxLength(200).IsUnicode(false).IsRequired();

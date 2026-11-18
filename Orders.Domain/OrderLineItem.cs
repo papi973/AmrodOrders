@@ -6,7 +6,7 @@ namespace Orders.Domain
 {
     public class OrderLineItem
     {
-        private OrderLineItem() { } 
+        private OrderLineItem() { }
 
         internal OrderLineItem(Guid orderId, string productSku, int quantity, decimal unitPrice)
         {

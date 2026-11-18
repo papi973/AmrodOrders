@@ -6,7 +6,7 @@ namespace Orders.Domain
 {
     public class Customer
     {
-        private Customer() { } 
+        private Customer() { }
 
         public Customer(string name, string email, string countryCode)
         {

@@ -361,5 +361,14 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-/web
-/.env
+
+# Ignore the following files and folders in the web project
+web/node_modules/
+web/dist/
+web/.env*.local
+web/coverage/
+
+# Docker Compose local env
+.env
+# Docker Compose local env
+.env

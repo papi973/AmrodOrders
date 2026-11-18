@@ -13,6 +13,6 @@ internal sealed class IdempotencyRecordConfiguration : IEntityTypeConfiguration<
         b.Property(r => r.RequestHash).HasMaxLength(64).IsFixedLength().IsUnicode(false).IsRequired();
         b.Property(r => r.CreatedAt).IsRequired();
 
-        b.HasIndex(r => r.CreatedAt).HasDatabaseName("IX_IdempotencyRecords_CreatedAt"); 
+        b.HasIndex(r => r.CreatedAt).HasDatabaseName("IX_IdempotencyRecords_CreatedAt");
     }
 }

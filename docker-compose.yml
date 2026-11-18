@@ -1,0 +1,78 @@
+name: amrod-orders
+
+x-app-config: &app-config
+  ConnectionStrings__OrdersDb: "Server=sqlserver;Database=AmrodOrders;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
+  ConnectionStrings__RabbitMq: "amqp://guest:guest@rabbitmq:5672/"
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+    ports: ["14333:1433"]          # 14333 so it doesn't clash with a local SQL Server on 1433
+    volumes: [sqldata:/var/opt/mssql]
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports: ["5672:5672", "15672:15672"]   # management UI: http://localhost:15672 (guest/guest)
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  migrator:
+    build: { context: ., dockerfile: db/Dockerfile.migrator }
+    environment:
+      <<: *app-config
+      ASPNETCORE_ENVIRONMENT: Development
+    depends_on:
+      sqlserver: { condition: service_healthy }
+    restart: "no"
+
+  api:
+    build: { context: ., dockerfile: Orders.API/Dockerfile }
+    environment:
+      <<: *app-config
+      ASPNETCORE_ENVIRONMENT: Development        # enables Swagger at /swagger for reviewers
+      Auth__Mode: Dev
+      Authentication__Schemes__Bearer__ValidIssuer: dotnet-user-jwts
+      Authentication__Schemes__Bearer__ValidAudiences__0: amrod-orders-docker
+      Authentication__Schemes__Bearer__SigningKeys__0__Issuer: dotnet-user-jwts
+      Authentication__Schemes__Bearer__SigningKeys__0__Value: ${DEV_JWT_SIGNING_KEY}
+      Authentication__Schemes__Bearer__SigningKeys__0__Length: "32"
+      Cors__AllowedOrigins__0: http://localhost:8081
+      Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command: Warning
+    ports: ["8080:8080"]
+    depends_on:
+      migrator: { condition: service_completed_successfully }
+      rabbitmq: { condition: service_healthy }
+
+  worker:
+    build: { context: ., dockerfile: Orders.Worker/Dockerfile }
+    environment:
+      <<: *app-config
+      DOTNET_ENVIRONMENT: Production
+      Worker__AllocationDelaySeconds: "5"
+      Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command: Warning
+    depends_on:
+      migrator: { condition: service_completed_successfully }
+      rabbitmq: { condition: service_healthy }
+
+  web:
+    build:
+      context: ./web
+      args:
+        VITE_DEV_TOKEN: ${DEV_JWT_TOKEN}
+    ports: ["8081:80"]
+    depends_on: [api]
+
+volumes:
+  sqldata:

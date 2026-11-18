@@ -28,7 +28,7 @@ namespace Orders.Domain
             ["ZW"] = ["ZWL", "USD"], // Zimbabwe
         };
 
-        private static readonly HashSet<string> CmaRandCountries =  new(StringComparer.OrdinalIgnoreCase) { "NA", "LS", "SZ" };
+        private static readonly HashSet<string> CmaRandCountries = new(StringComparer.OrdinalIgnoreCase) { "NA", "LS", "SZ" };
 
         public static IReadOnlyCollection<string> Countries => CurrenciesByCountry.Keys;
 

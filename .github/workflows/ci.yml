@@ -1,0 +1,151 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API (.NET) - build, lint, test, migrations
+    runs-on: ubuntu-latest
+
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: "Ci_Passw0rd!123"
+        ports: ["1433:1433"]
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Ci_Passw0rd!123' -C -Q 'SELECT 1' || exit 1"
+          --health-interval 10s --health-timeout 5s --health-retries 12 --health-start-period 20s
+
+    env:
+      DOTNET_NOLOGO: true
+      ASPNETCORE_ENVIRONMENT: Development
+      # Used by integration tests (fresh DB created from migrations)
+      TEST_SQL_CONNECTION: "Server=localhost,1433;Database=AmrodOrders_IntegrationTests;User Id=sa;Password=Ci_Passw0rd!123;TrustServerCertificate=True"
+      # Needed by design-time tooling (dotnet ef), which starts Program.cs
+      ConnectionStrings__OrdersDb: "Server=localhost,1433;Database=AmrodOrders_Design;User Id=sa;Password=Ci_Passw0rd!123;TrustServerCertificate=True"
+      ConnectionStrings__RabbitMq: "amqp://guest:guest@localhost:5672/"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: |
+          dotnet tool restore
+          dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Lint (formatting)
+        run: dotnet format --no-restore --verify-no-changes
+
+      - name: Security - vulnerable packages
+        run: |
+          dotnet list package --vulnerable --include-transitive | tee vulnerable.txt
+          if grep -q "has the following vulnerable packages" vulnerable.txt; then
+            echo "::error::Vulnerable NuGet packages found"; exit 1
+          fi
+
+      - name: Test (unit + integration) with coverage
+        run: >
+          dotnet test --no-build -c Release
+          --collect:"XPlat Code Coverage"
+          --results-directory ./TestResults
+          --logger trx
+
+      - name: Coverage report
+        if: always()
+        run: |
+          dotnet tool install -g dotnet-reportgenerator-globaltool
+          reportgenerator -reports:"TestResults/**/coverage.cobertura.xml" -targetdir:coverage-report -reporttypes:"Html;MarkdownSummaryGithub"
+          cat coverage-report/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Migrations - generate idempotent SQL script
+        run: >
+          dotnet ef migrations script --idempotent
+          --project Orders.API --startup-project Orders.API
+          --configuration Release --no-build
+          --output artifacts/migrate-idempotent.sql
+
+      - name: Migrations - verify script against an empty database (run twice = idempotent)
+        run: |
+          SQL="${{ job.services.sqlserver.id }}"
+          docker cp artifacts/migrate-idempotent.sql "$SQL":/tmp/migrate.sql
+          docker exec "$SQL" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Ci_Passw0rd!123' -C -b \
+            -Q "IF DB_ID('AmrodOrders_CiVerify') IS NOT NULL DROP DATABASE AmrodOrders_CiVerify; CREATE DATABASE AmrodOrders_CiVerify;"
+          for run in 1 2; do
+            docker exec "$SQL" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Ci_Passw0rd!123' -C -b -I \
+              -d AmrodOrders_CiVerify -i /tmp/migrate.sql
+          done
+
+      - name: Publish API and Worker
+        run: |
+          dotnet publish Orders.API/Orders.API.csproj -c Release --no-build -o artifacts/api
+          dotnet publish Orders.Worker/Orders.Worker.csproj -c Release --no-build -o artifacts/worker
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-artifacts
+          path: |
+            artifacts/
+            coverage-report/
+            TestResults/**/*.trx
+
+  web:
+    name: Web (React) - lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test:coverage
+      - run: npm run build
+
+      - name: Security - npm audit (high and above)
+        run: npm audit --omit=dev --audit-level=high
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-artifacts
+          path: |
+            web/dist/
+            web/coverage/
+
+  docker:
+    name: Docker images build
+    runs-on: ubuntu-latest
+    needs: [api, web]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build all images
+        run: |
+          cp .env.example .env
+          docker compose build
