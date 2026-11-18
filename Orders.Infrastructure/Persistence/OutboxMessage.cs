@@ -18,7 +18,7 @@ namespace Orders.Infrastructure.Persistence
         public int Attempts { get; private set; }
         public string? LastError { get; private set; }
 
-        public static OutboxMessage Create<T>(string type, T message,string routingKey, string? correlationId = null)
+        public static OutboxMessage Create<T>(string type, T message, string routingKey, string? correlationId = null)
         {
             return new OutboxMessage
             {

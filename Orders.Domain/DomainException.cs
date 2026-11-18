@@ -6,7 +6,7 @@ using System.Text;
 
 namespace Orders.Domain
 {
-    public class DomainException( string message, string code) : Exception(message)
+    public class DomainException(string message, string code) : Exception(message)
     {
         public string Code { get; } = code;
     }

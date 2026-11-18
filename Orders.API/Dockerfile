@@ -1,0 +1,20 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+# Restore first (cached layer unless a .csproj changes)
+COPY Orders.Domain/*.csproj Orders.Domain/
+COPY Orders.Contracts/*.csproj Orders.Contracts/
+COPY Orders.Infrastructure/*.csproj Orders.Infrastructure/
+COPY Orders.API/*.csproj Orders.API/
+RUN dotnet restore Orders.API/Orders.API.csproj
+
+COPY . .
+RUN dotnet publish Orders.API/Orders.API.csproj -c Release -o /app --no-restore
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
+COPY --from=build /app .
+ENV ASPNETCORE_HTTP_PORTS=8080
+EXPOSE 8080
+USER $APP_UID
+ENTRYPOINT ["dotnet", "Orders.API.dll"]

@@ -4,7 +4,7 @@ using Microsoft.Identity.Web;
 
 namespace Orders.API.Auth
 {
-    public static class  AuthPolicies
+    public static class AuthPolicies
     {
         public const string Read = "Orders.Read";
         public const string Write = "Orders.Write";

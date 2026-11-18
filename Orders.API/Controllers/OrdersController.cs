@@ -54,7 +54,7 @@ public sealed class OrdersController(OrdersDbContext db, IOptions<OrderingOption
             RabbitTopology.OrderCreatedRoutingKey,
             HttpContext.GetCorrelationId()));
 
-        await db.SaveChangesAsync(ct); 
+        await db.SaveChangesAsync(ct);
 
         var response = (await LoadOrderAsync(order.Id, ct))!;
         Response.Headers.ETag = response.ETag();
