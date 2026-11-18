@@ -11,14 +11,14 @@ namespace Orders.Domain
         private static readonly Dictionary<OrderStatus, OrderStatus[]> UserAllowed = new()
         {
             [OrderStatus.Pending] = [OrderStatus.Paid, OrderStatus.Cancelled],
-            [OrderStatus.Paid] = [OrderStatus.Delivered, OrderStatus.Cancelled],
-            [OrderStatus.Delivered] = [],
+            [OrderStatus.Paid] = [OrderStatus.Fulfilled, OrderStatus.Cancelled],
+            [OrderStatus.Fulfilled] = [],
             [OrderStatus.Cancelled] = [],
         };
 
         public static bool CanTransition(OrderStatus from, OrderStatus to, bool isSystem = false)
         {
-            if (isSystem && from == OrderStatus.Pending && to == OrderStatus.Delivered)
+            if (isSystem && from == OrderStatus.Pending && to == OrderStatus.Fulfilled)
                 return true;
 
             return UserAllowed[from].Contains(to);
