@@ -15,7 +15,7 @@ namespace Orders.Infrastructure.Persistence.Configurations
             {
                 t.HasCheckConstraint("CK_Orders_TotalAmount_NonNegative", "[TotalAmount] >= 0");
                 t.HasCheckConstraint("CK_Orders_Status",
-                    "[Status] IN ('Pending', 'Paid', 'Delivered', 'Cancelled')");
+                    "[Status] IN ('Pending', 'Paid', 'Fulfilled', 'Cancelled')");
             });
 
             b.HasKey(o => o.Id);
