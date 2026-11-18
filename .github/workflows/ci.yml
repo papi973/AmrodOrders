@@ -87,7 +87,7 @@ jobs:
           docker exec "$SQL" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Ci_Passw0rd!123' -C -b \
             -Q "IF DB_ID('AmrodOrders_CiVerify') IS NOT NULL DROP DATABASE AmrodOrders_CiVerify; CREATE DATABASE AmrodOrders_CiVerify;"
           for run in 1 2; do
-            docker exec "$SQL" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Ci_Passw0rd!123' -C -b \
+            docker exec "$SQL" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Ci_Passw0rd!123' -C -b -I \
               -d AmrodOrders_CiVerify -i /tmp/migrate.sql
           done
 
