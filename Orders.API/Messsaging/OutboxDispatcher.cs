@@ -26,7 +26,7 @@ namespace Orders.API.Messsaging
             while (await timer.WaitForNextTickAsync(stoppingToken));
         }
 
-        private async Task DispatchBatchAsync(CancellationToken ct)
+        public async Task DispatchBatchAsync(CancellationToken ct)
         {
             using var scope = scopes.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<OrdersDbContext>();

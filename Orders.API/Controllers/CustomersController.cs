@@ -10,7 +10,6 @@ namespace Orders.API.Controllers;
 
 [ApiController]
 [Route("api/customers")]
-[Produces("application/json")]
 [ProducesResponseType(StatusCodes.Status401Unauthorized)]
 [ProducesResponseType(StatusCodes.Status401Unauthorized)]
 public sealed class CustomersController(OrdersDbContext db) : ControllerBase
