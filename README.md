@@ -112,34 +112,34 @@ Example requests for every endpoint, including error cases, are in [`Orders.API/
 
 ```mermaid
 flowchart LR
-    UI["React UI<br/>(Vite + TanStack Query)"]
+    UI[React UI]
 
-    subgraph API["Orders.API"]
-        C["Controllers<br/>validation · auth · Problem Details"]
-        D["OutboxDispatcher<br/>(background, every 2s)"]
+    subgraph APIBOX [Orders.API]
+        C[Controllers]
+        D[Outbox Dispatcher]
     end
 
-    DB[("SQL Server<br/>Orders · OutboxMessages<br/>ProcessedMessages")]
+    DB[(SQL Server)]
 
-    subgraph MQ["RabbitMQ"]
-        X{{"orders.events<br/>(topic exchange)"}}
-        Q["orders.order-created"]
-        R["retry queues<br/>5s · 30s · 2m"]
-        DLQ["dead-letter queue"]
+    subgraph MQBOX [RabbitMQ]
+        X{{orders.events exchange}}
+        Q[orders.order-created queue]
+        R[Retry queues 5s 30s 2m]
+        DLQ[Dead letter queue]
     end
 
-    W["Orders.Worker<br/>allocate → Fulfilled"]
+    W[Orders.Worker]
 
-    UI -->|"/api (JWT)"| C
-    C -->|"Order + OutboxMessage<br/>in one transaction"| DB
-    D -->|"read unsent events"| DB
-    D -->|"publish (confirms)"| X
-    X -->|"order.created"| Q
-    Q -->|consume| W
-    W -->|"status + dedup record<br/>in one transaction"| DB
-    W -.->|"on failure"| R
-    R -.->|"after TTL"| X
-    W -.->|"after 3 retries"| DLQ
+    UI -->|HTTP with JWT| C
+    C -->|Order and outbox event in one transaction| DB
+    D -->|Read unsent events| DB
+    D -->|Publish with confirms| X
+    X -->|order.created| Q
+    Q -->|Consume| W
+    W -->|Set Fulfilled and dedup record| DB
+    W -.->|On failure| R
+    R -.->|After TTL| X
+    W -.->|After 3 retries| DLQ
 ```
 
 | Project | Responsibility | Depends on |
@@ -162,15 +162,12 @@ flowchart LR
 ```mermaid
 stateDiagram-v2
     direction LR
-    [*] --> Pending : order created
-
-    Pending --> Paid : user
-    Pending --> Cancelled : user
-    Pending --> Fulfilled : worker only
-
-    Paid --> Fulfilled : user / worker
-    Paid --> Cancelled : user
-
+    [*] --> Pending
+    Pending --> Paid: user
+    Pending --> Cancelled: user
+    Pending --> Fulfilled: worker only
+    Paid --> Fulfilled: user or worker
+    Paid --> Cancelled: user
     Fulfilled --> [*]
     Cancelled --> [*]
 ```
