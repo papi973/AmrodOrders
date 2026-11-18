@@ -4,8 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Orders.API.Auth;
 using Orders.API.Contracts;
+using Orders.API.Observability;
 using Orders.API.Options;
+using Orders.Contracts;
 using Orders.Domain;
+using Orders.Infrastructure.Messaging;
 using Orders.Infrastructure.Persistence;
 using System.Security.Cryptography;
 using System.Text;
@@ -45,7 +48,13 @@ public sealed class OrdersController(OrdersDbContext db, IOptions<OrderingOption
             ordering.Value.AllowRandInCma);
 
         db.Orders.Add(order);
-        await db.SaveChangesAsync(ct);
+        db.OutboxMessages.Add(OutboxMessage.Create(
+            MessageTypes.OrderCreated,
+            new OrderCreated(order.Id, order.CustomerId, order.CurrencyCode, order.TotalAmount, order.CreatedAt),
+            RabbitTopology.OrderCreatedRoutingKey,
+            HttpContext.GetCorrelationId()));
+
+        await db.SaveChangesAsync(ct); 
 
         var response = (await LoadOrderAsync(order.Id, ct))!;
         Response.Headers.ETag = response.ETag();

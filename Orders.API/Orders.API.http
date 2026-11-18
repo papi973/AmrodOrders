@@ -4,37 +4,52 @@
 @customerId = BCE6AE9A-2F4E-455A-8201-961D482F373A
 @orderId = F9BEE150-D029-4503-9AC7-B4B1695CB55B
 
+########## CUSTOMERS ##########
+
 ### Create customer (201)
 POST {{baseUrl}}/api/customers
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "name": "Acme Trading", "email": "buyer@acme.co.za", "countryCode": "ZA" }
 
 ### Duplicate email (409)
 POST {{baseUrl}}/api/customers
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "name": "Acme Again", "email": "BUYER@acme.co.za", "countryCode": "ZA" }
 
 ### Non-SADC country (400)
 POST {{baseUrl}}/api/customers
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "name": "Nairobi Ltd", "email": "x@nairobi.co.ke", "countryCode": "KE" }
 
 ### Search (200)
 GET {{baseUrl}}/api/customers?search=acme&page=1&pageSize=10
+Authorization: Bearer {{token}}
 
 ### pageSize > 100 (400)
 GET {{baseUrl}}/api/customers?pageSize=101
+Authorization: Bearer {{token}}
 
-### Get by id: paste an id from the create response (200 / 404)
+### Get customer by id (200)
+GET {{baseUrl}}/api/customers/{{customerId}}
+Authorization: Bearer {{token}}
+
+### Unknown customer (404)
 GET {{baseUrl}}/api/customers/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{token}}
 
+########## ORDERS ##########
 
-### Create order (201, ETag header, total = 24.75)
+### Create order: 201, ETag header, total = 24.75, triggers OrderCreated
 POST {{baseUrl}}/api/orders
+Authorization: Bearer {{token}}
 Content-Type: application/json
+X-Correlation-ID: demo-001
 
 {
   "customerId": "{{customerId}}",
@@ -47,38 +62,48 @@ Content-Type: application/json
 
 ### Wrong currency for ZA customer (422)
 POST {{baseUrl}}/api/orders
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "customerId": "{{customerId}}", "currencyCode": "USD", "lineItems": [ { "productSku": "X", "quantity": 1, "unitPrice": 1 } ] }
 
 ### Bad lines: qty 0, 3 decimals (400)
 POST {{baseUrl}}/api/orders
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "customerId": "{{customerId}}", "currencyCode": "ZAR", "lineItems": [ { "productSku": "X", "quantity": 0, "unitPrice": 1.005 } ] }
 
-### Get order (200, note the ETag response header)
+### Get order: 200, ETag header (Fulfilled a few seconds after create)
 GET {{baseUrl}}/api/orders/{{orderId}}
+Authorization: Bearer {{token}}
 
-### Get with If-None-Match (304): paste the ETag value incl. quotes
+### Get with If-None-Match (304): paste the current ETag incl. quotes
 GET {{baseUrl}}/api/orders/{{orderId}}
+Authorization: Bearer {{token}}
 If-None-Match: "AAAAAAAAB9k="
 
 ### List: filter + sort + page (200)
-GET {{baseUrl}}/api/orders?customerId={{customerId}}&status=Pending&sort=-total&page=1&pageSize=10
+GET {{baseUrl}}/api/orders?customerId={{customerId}}&sort=-total&page=1&pageSize=10
+Authorization: Bearer {{token}}
 
 ### Invalid sort (400)
 GET {{baseUrl}}/api/orders?sort=name
+Authorization: Bearer {{token}}
+
+########## STATUS TRANSITIONS (use a fresh Pending order) ##########
 
 ### Pending -> Paid (200)
 PUT {{baseUrl}}/api/orders/{{orderId}}/status
+Authorization: Bearer {{token}}
 Content-Type: application/json
 Idempotency-Key: 6f1c9a52-0001-4b1e-9d1a-000000000001
 
 { "status": "Paid" }
 
-### Same key, same body: replayed (200 + Idempotent-Replayed: true, no second change)
+### Same key, same body: replayed (200 + Idempotent-Replayed: true)
 PUT {{baseUrl}}/api/orders/{{orderId}}/status
+Authorization: Bearer {{token}}
 Content-Type: application/json
 Idempotency-Key: 6f1c9a52-0001-4b1e-9d1a-000000000001
 
@@ -86,6 +111,7 @@ Idempotency-Key: 6f1c9a52-0001-4b1e-9d1a-000000000001
 
 ### Same key, different body (422)
 PUT {{baseUrl}}/api/orders/{{orderId}}/status
+Authorization: Bearer {{token}}
 Content-Type: application/json
 Idempotency-Key: 6f1c9a52-0001-4b1e-9d1a-000000000001
 
@@ -93,12 +119,14 @@ Idempotency-Key: 6f1c9a52-0001-4b1e-9d1a-000000000001
 
 ### No Idempotency-Key (400)
 PUT {{baseUrl}}/api/orders/{{orderId}}/status
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
-{ "status": "Delivered" }
+{ "status": "Fulfilled" }
 
-### Invalid transition: Paid -> Pending (422, code order.invalid_transition)
+### Invalid transition -> Pending (422, code order.invalid_transition)
 PUT {{baseUrl}}/api/orders/{{orderId}}/status
+Authorization: Bearer {{token}}
 Content-Type: application/json
 Idempotency-Key: 6f1c9a52-0001-4b1e-9d1a-000000000002
 
@@ -106,11 +134,14 @@ Idempotency-Key: 6f1c9a52-0001-4b1e-9d1a-000000000002
 
 ### Stale If-Match (412)
 PUT {{baseUrl}}/api/orders/{{orderId}}/status
+Authorization: Bearer {{token}}
 Content-Type: application/json
 Idempotency-Key: 6f1c9a52-0001-4b1e-9d1a-000000000003
 If-Match: "AAAAAAAAAAA="
 
-{ "status": "Delivered" }
+{ "status": "Fulfilled" }
+
+########## AUTH ##########
 
 ### No token (401)
 GET {{baseUrl}}/api/orders
@@ -126,15 +157,17 @@ Content-Type: application/json
 GET {{baseUrl}}/api/orders
 Authorization: Bearer {{readerToken}}
 
-### Correlation id echoed (check X-Correlation-ID response header + console log)
+########## OPS ##########
+
+### Correlation id echoed (X-Correlation-ID response header + console logs)
 GET {{baseUrl}}/api/orders
 Authorization: Bearer {{token}}
-X-Correlation-ID: test-corr-123
+X-Correlation-ID: demo-002
 
 ### Liveness (200, no auth)
 GET {{baseUrl}}/healthz
 
-### Readiness (200 Healthy; stop SQL Server to see 503)
+### Readiness (200; Degraded if RabbitMQ down, 503 if SQL down)
 GET {{baseUrl}}/readiness
 
 ### Metrics (Prometheus text)

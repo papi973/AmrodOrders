@@ -1,9 +1,11 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Orders.Infrastructure.Messaging;
+using Orders.Infrastructure.Persistence;
+using System;
 using System.Collections.Generic;
 using System.Text;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Orders.Infrastructure.Persistence;
 
 namespace Orders.Infrastructure
 {
@@ -18,6 +20,13 @@ namespace Orders.Infrastructure
                 sql.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(10), errorNumbersToAdd: null);
             }));
 
+            return services;
+        }
+
+        public static IServiceCollection AddMessaging(this IServiceCollection services, string rabbitMqUri)
+        {
+            services.AddSingleton(sp => new RabbitMqConnection(rabbitMqUri, sp.GetRequiredService<ILogger<RabbitMqConnection>>()));
+            services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
             return services;
         }
     }

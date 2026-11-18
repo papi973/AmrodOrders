@@ -8,7 +8,7 @@ namespace Orders.Domain
     {
         Pending = 0,
         Paid = 1,
-        Delivered = 2,
+        Fulfilled = 2,
         Cancelled = 3
     }
 }

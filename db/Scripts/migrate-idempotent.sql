@@ -171,3 +171,85 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261118070957_AddOutboxAndProcessedMessages'
+)
+BEGIN
+    CREATE TABLE [OutboxMessages] (
+        [Id] uniqueidentifier NOT NULL,
+        [Type] nvarchar(200) NOT NULL,
+        [RoutingKey] varchar(200) NOT NULL,
+        [Payload] nvarchar(max) NOT NULL,
+        [CorrelationId] varchar(64) NULL,
+        [OccurredAt] datetime2 NOT NULL,
+        [ProcessedAt] datetime2 NULL,
+        [Attempts] int NOT NULL,
+        [LastError] nvarchar(2000) NULL,
+        CONSTRAINT [PK_OutboxMessages] PRIMARY KEY ([Id])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261118070957_AddOutboxAndProcessedMessages'
+)
+BEGIN
+    CREATE TABLE [ProcessedMessages] (
+        [MessageId] uniqueidentifier NOT NULL,
+        [Consumer] varchar(100) NOT NULL,
+        [ProcessedAt] datetime2 NOT NULL,
+        CONSTRAINT [PK_ProcessedMessages] PRIMARY KEY ([MessageId], [Consumer])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261118070957_AddOutboxAndProcessedMessages'
+)
+BEGIN
+    EXEC(N'CREATE INDEX [IX_OutboxMessages_Unprocessed] ON [OutboxMessages] ([OccurredAt]) WHERE [ProcessedAt] IS NULL');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261118070957_AddOutboxAndProcessedMessages'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261118070957_AddOutboxAndProcessedMessages', N'10.0.0');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261118074404_RestoreFulfilledOrderStatus'
+)
+BEGIN
+    ALTER TABLE [Orders] DROP CONSTRAINT [CK_Orders_Status];
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261118074404_RestoreFulfilledOrderStatus'
+)
+BEGIN
+    EXEC(N'ALTER TABLE [Orders] ADD CONSTRAINT [CK_Orders_Status] CHECK ([Status] IN (''Pending'', ''Paid'', ''Fulfilled'', ''Cancelled''))');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261118074404_RestoreFulfilledOrderStatus'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261118074404_RestoreFulfilledOrderStatus', N'10.0.0');
+END;
+
+COMMIT;
+GO
+
