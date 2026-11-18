@@ -48,7 +48,9 @@ docker compose up --build
 | Health | http://localhost:8080/healthz, http://localhost:8080/readiness |
 | Metrics (Prometheus) | http://localhost:8080/metrics |
 
-Compose starts: `sqlserver` → `migrator` (applies EF migrations, then exits) → `api`, `worker` → `web` (nginx, proxies `/api` to the API).
+Compose starts: `sqlserver` → `migrator` (applies EF migrations) → `seed` (loads demo data) → `api`, `worker` → `web` (nginx, proxies `/api` to the API).
+
+The `seed` service loads **80 customers and 1,000 orders** across all 16 SADC countries and their permitted currencies (including ZAR for CMA countries and USD for Zimbabwe), with a mix of statuses over the last 180 days. It skips itself if 1,000+ orders already exist.
 
 > `.env.example` contains **demo-only** values: an SA password, a JWT signing key and a pre-signed token (roles `Orders.Read` + `Orders.Write`, expires 2028). They only work against this local Compose configuration.
 
@@ -79,6 +81,12 @@ dotnet user-secrets set "ConnectionStrings:RabbitMq" "..." --project Orders.Work
 ```bash
 dotnet tool restore
 dotnet ef database update --project Orders.API --startup-project Orders.API
+```
+
+Optional demo data (80 customers, 1,000 orders):
+
+```bash
+sqlcmd -S localhost -d AmrodOrders -E -I -i db/scripts/seed.sql
 ```
 
 ### 3. Dev tokens (mock Entra)
@@ -242,6 +250,7 @@ dotnet ef migrations script AddOrderRowVersion InitialCreate --project Orders.AP
 
 Generated scripts are in [`db/scripts`](db/scripts).
 
+> `db/scripts/seed.sql` seeds demo data (set-based, re-runnable). Prices are illustrative and are not converted between currencies.
 > **Running `migrate-idempotent.sql` with sqlcmd:** the script creates a filtered index, which requires `QUOTED_IDENTIFIER ON`. SSMS and EF Core set this by default, but **sqlcmd does not**, so pass `-I`:
 > `sqlcmd -S <server> -d AmrodOrders -I -i db/scripts/migrate-idempotent.sql`
 > CI found this. It verifies the script exactly this way.
@@ -407,4 +416,4 @@ Validation uses ISO 3166-1 alpha-2 country codes and the ISO 4217 currencies per
 
 ## Time spent
 
-Approximately **16 hours** over 2 days. I prioritised the domain rules, migrations and database lifecycle, idempotency and concurrency, and reliable messaging, then the frontend, tests and CI. Written answers are in [`ANSWERS.md`](ANSWERS.md).
+Approximately **16 hours** over 3 days. I prioritised the domain rules, migrations and database lifecycle, idempotency and concurrency, and reliable messaging, then the frontend, tests and CI. Written answers are in [`ANSWERS.md`](ANSWERS.md).

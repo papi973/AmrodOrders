@@ -37,6 +37,29 @@ services:
       sqlserver: { condition: service_healthy }
     restart: "no"
 
+  seed:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    volumes:
+      - ./db/scripts/seed.sql:/seed.sql:ro
+    entrypoint:
+      - /opt/mssql-tools18/bin/sqlcmd
+      - -S
+      - sqlserver
+      - -U
+      - sa
+      - -P
+      - ${MSSQL_SA_PASSWORD}
+      - -C
+      - -I
+      - -b
+      - -d
+      - AmrodOrders
+      - -i
+      - /seed.sql
+    depends_on:
+      migrator: { condition: service_completed_successfully }
+    restart: "no"
+ 
   api:
     build: { context: ., dockerfile: Orders.API/Dockerfile }
     environment:
